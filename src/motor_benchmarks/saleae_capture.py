@@ -29,27 +29,35 @@ class SaleaeCapture:
         self._mso = mso_api.MSO(serial_number=self.serial_number)
         print("Connected to Saleae MSO")
 
-    def capture_encoder_data(
+    def capture_mixed_data(
         self,
         duration: float,
-        channels: list[int],
         save_dir: Path,
-        channel_names: Optional[list[str]] = None,
+        digital_channels: Optional[list[int]] = None,
+        digital_names: Optional[list[str]] = None,
+        digital_port: int = 0,
         threshold_volts: float = 1.65,
-        port: int = 0
+        analog_channels: Optional[list[int]] = None,
+        analog_names: Optional[list[str]] = None,
+        analog_voltage_range: float = 20.0,
+        analog_probe_attenuation: mso_api.ProbeAttenuation = mso_api.ProbeAttenuation.PROBE_10X
     ) -> mso_api.Capture:
-        """Capture encoder data from specified digital channels.
+        """Capture mixed analog and digital data.
 
         Args:
             duration: Capture duration in seconds
-            channels: List of digital channel numbers to capture
             save_dir: Directory to save the capture data
-            channel_names: Optional list of names for the channels (defaults to "encoder_0", "encoder_1", etc.)
+            digital_channels: Optional list of digital channel numbers to capture
+            digital_names: Optional list of names for digital channels
+            digital_port: Digital probe port number (default 0)
             threshold_volts: Digital threshold voltage (default 1.65V for 3.3V logic)
-            port: Digital probe port number (default 0)
+            analog_channels: Optional list of analog channel numbers to capture
+            analog_names: Optional list of names for analog channels
+            analog_voltage_range: Voltage range for analog channels (default 20.0V for 10X probe)
+            analog_probe_attenuation: Probe attenuation setting (default PROBE_10X)
 
         Returns:
-            Capture object with digital data
+            Capture object with analog and/or digital data
 
         Raises:
             RuntimeError: If not connected to MSO device
@@ -57,26 +65,49 @@ class SaleaeCapture:
         if not self._mso:
             raise RuntimeError("Not connected to Saleae MSO. Call connect() first.")
 
-        # Generate default channel names if not provided
-        if channel_names is None:
-            channel_names = [f"encoder_{i}" for i in range(len(channels))]
-        elif len(channel_names) != len(channels):
-            raise ValueError("Number of channel names must match number of channels")
+        enabled_channels = []
 
         # Configure digital channels
-        enabled_channels = [
-            mso_api.DigitalChannel(
-                channel=ch,
-                name=name,
-                port=port,
-                threshold_volts=threshold_volts
-            )
-            for ch, name in zip(channels, channel_names)
-        ]
+        if digital_channels:
+            if digital_names is None:
+                digital_names = [f"digital_{i}" for i in range(len(digital_channels))]
+            elif len(digital_names) != len(digital_channels):
+                raise ValueError("Number of digital names must match number of digital channels")
+
+            for ch, name in zip(digital_channels, digital_names):
+                enabled_channels.append(
+                    mso_api.DigitalChannel(
+                        channel=ch,
+                        name=name,
+                        port=digital_port,
+                        threshold_volts=threshold_volts
+                    )
+                )
+
+        # Configure analog channels
+        if analog_channels:
+            if analog_names is None:
+                analog_names = [f"analog_{i}" for i in range(len(analog_channels))]
+            elif len(analog_names) != len(analog_channels):
+                raise ValueError("Number of analog names must match number of analog channels")
+
+            for ch, name in zip(analog_channels, analog_names):
+                enabled_channels.append(
+                    mso_api.AnalogChannel(
+                        channel=ch,
+                        name=name,
+                        voltage_range=analog_voltage_range,
+                        probe_attenuation=analog_probe_attenuation
+                    )
+                )
+
+        if not enabled_channels:
+            raise ValueError("Must specify at least one digital or analog channel")
 
         # Create capture configuration
         capture_config = mso_api.CaptureConfig(
             enabled_channels=enabled_channels,
+            analog_settings=mso_api.AnalogSettings(sample_rate=1e6) if analog_channels else None,
             capture_settings=mso_api.TimedCapture(capture_length_seconds=duration)
         )
 
@@ -89,6 +120,37 @@ class SaleaeCapture:
         print(f"  Capture complete. Data saved to: {save_dir}")
 
         return capture
+
+    def capture_encoder_data(
+        self,
+        duration: float,
+        channels: list[int],
+        save_dir: Path,
+        channel_names: Optional[list[str]] = None,
+        threshold_volts: float = 1.65,
+        port: int = 0
+    ) -> mso_api.Capture:
+        """Capture encoder data from digital channels (legacy method).
+
+        Args:
+            duration: Capture duration in seconds
+            channels: List of digital channel numbers to capture
+            save_dir: Directory to save the capture data
+            channel_names: Optional list of names for the channels
+            threshold_volts: Digital threshold voltage (default 1.65V for 3.3V logic)
+            port: Digital probe port number (default 0)
+
+        Returns:
+            Capture object with digital data
+        """
+        return self.capture_mixed_data(
+            duration=duration,
+            save_dir=save_dir,
+            digital_channels=channels,
+            digital_names=channel_names,
+            digital_port=port,
+            threshold_volts=threshold_volts
+        )
 
     def calculate_rpm_from_encoder(
         self,
