@@ -1,188 +1,247 @@
-"""Nidec-24H motor controller via Jumperless V5 using paste mode."""
+"""
+Nidec-24H motor controller via Jumperless V5 (MicroPython REPL paste mode).
+
+Design:
+- A small MicroPython helper is uploaded once per connection.
+- Speed changes only call a pre-defined function on the board.
+"""
+
+from __future__ import annotations
 
 import time
+import textwrap
+from dataclasses import dataclass
+from typing import Optional
+
 import serial
 
 
-class NidecMotorController:
-    """Control Nidec-24H motor via Jumperless V5.
+_PROMPT = b">>> "
 
-    Sends complete initialization script as a template for each PWM change.
-    Uses pyboard.py to communicate with MicroPython.
-    """
 
-    # Nidec initialization script template
-    # Template parameters: {pwm_pin}, {pwm_freq}, {duty_cycle}
-    NIDEC_INIT_TEMPLATE = """
-import jumperless as j
-import time
+class MicroPythonPasteSession:
+    """Minimal, more reliable paste-mode executor for MicroPython over serial."""
 
-print("nidec start")
-
-pwm_pin = j.GPIO_{pwm_pin}
-pwm_freq = {pwm_freq}
-
-def set_pin(pin, high):
-    if high:
-        j.disconnect(j.GND, pin)
-        j.connect(j.TOP_RAIL, pin)
-    else:
-        j.disconnect(j.TOP_RAIL, pin)
-        j.connect(j.GND, pin)
-
-CHANGE_PIN  = 33  # to measure how long pwm-change to encoder takes to propagate
-ORANGE_PWM  = 25  # Speed command input
-GREEN_BRAKE = 28  # Brake: High-Released
-YELLOW_DIR  = 29  # Direction
-WHITE_5V    = 30  # Start/stop
-
-j.nodes_clear()
-j.dac_set(j.TOP_RAIL, 3.3)
-
-j.connect(pwm_pin, ORANGE_PWM)
-
-set_pin(CHANGE_PIN, True)
-j.pwm(pwm_pin, pwm_freq, {duty_cycle})
-
-set_pin(GREEN_BRAKE, True) # brake
-set_pin(YELLOW_DIR, True)
-set_pin(WHITE_5V, True) # start
-set_pin(CHANGE_PIN, False)
-
-print('done')
-"""
-
-    def __init__(
-        self,
-        port: str,
-        baudrate: int = 115200,
-        pwm_pin: int = 1,  # GPIO_1
-        pwm_freq: int = 20_000,
-        invert_duty_cycle: bool = True
-    ):
-        """Initialize Nidec motor controller.
-
-        Args:
-            port: Serial port path (e.g., '/dev/ttyACM0')
-            baudrate: Serial baud rate
-            pwm_pin: Jumperless GPIO pin for PWM output
-            pwm_freq: PWM frequency in Hz (20kHz works well)
-            invert_duty_cycle: If True, 0=max speed, 1=stop (Nidec behavior)
-        """
+    def __init__(self, port: str, baudrate: int = 115200):
         self.port = port
         self.baudrate = baudrate
-        self.pwm_pin = pwm_pin
-        self.pwm_freq = pwm_freq
-        self.invert_duty_cycle = invert_duty_cycle
-        self._serial = None
+        self.ser: Optional[serial.Serial] = None
 
-    def connect(self) -> None:
-        """Connect to Jumperless via serial."""
+    def open(self) -> None:
+        if self.ser and self.ser.is_open:
+            return
+
         try:
-            self._serial = serial.Serial(
+            self.ser = serial.Serial(
                 port=self.port,
                 baudrate=self.baudrate,
-                timeout=2.0
+                timeout=0.1,          # small read timeout; we implement our own waiting
+                write_timeout=2.0,
             )
             time.sleep(0.5)
-
-            # Send Ctrl-C to interrupt any running code
-            self._serial.write(b'\x03')
-            time.sleep(0.2)
-            self._serial.read_all()  # Clear buffer
-
-            print(f"  Connected to Jumperless on {self.port}")
+            self.interrupt()
+            self.flush()
         except Exception as e:
-            raise RuntimeError(f"Failed to connect to Jumperless on {self.port}: {e}")
+            raise RuntimeError(f"Failed to open serial port {self.port}: {e}") from e
 
-    def disconnect(self) -> None:
-        """Stop motor and close connection."""
-        if self._serial and self._serial.is_open:
-            try:
-                # Stop motor (duty cycle 1.0 = stopped for inverted mode)
-                stop_duty = 1.0 if self.invert_duty_cycle else 0.0
-                self.set_pwm_duty_cycle(stop_duty)
-                time.sleep(0.3)
-            except:
-                pass  # Best effort to stop
-            finally:
-                try:
-                    self._serial.close()
-                except:
-                    pass
+    def close(self) -> None:
+        if self.ser and self.ser.is_open:
+            self.ser.close()
 
-    def _exec(self, code: str) -> str:
-        """Execute MicroPython code using paste mode (Ctrl-E).
+    def flush(self) -> None:
+        if not self.ser:
+            return
+        # More explicit than read_all()
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
 
-        Args:
-            code: Python code to execute (can be multi-line)
+    def interrupt(self) -> None:
+        """Try to stop any running code (Ctrl-C twice)."""
+        self._write(b"\x03\x03")
+        self._drain(0.25)
 
-        Returns:
-            Output from the code execution
+    def exec_paste(self, code: str, timeout: float = 5.0) -> str:
         """
-        if not self._serial or not self._serial.is_open:
-            raise RuntimeError("Not connected to Jumperless. Call connect() first.")
-
-        try:
-            # Clear any existing output
-            self._serial.read_all()
-
-            # Enter paste mode (Ctrl-E)
-            self._serial.write(b'\x05')
-            time.sleep(0.3)
-            # Read and discard paste mode banner
-            self._serial.read_all()
-
-            # Send the code (preserve original formatting including indentation)
-            self._serial.write(code.encode('utf-8'))
-            self._serial.write(b'\n')  # Extra newline
-            time.sleep(0.3)
-
-            # Exit paste mode and execute (Ctrl-D)
-            self._serial.write(b'\x04')
-
-            # Wait for execution to complete
-            time.sleep(1.5)
-
-            # Read all output
-            output = self._serial.read_all().decode('utf-8', errors='ignore')
-            return output
-        except Exception as e:
-            raise RuntimeError(f"Execution failed: {e}")
-
-    def set_pwm_duty_cycle(self, duty_cycle: float) -> None:
-        """Set motor PWM duty cycle by sending complete initialization script.
-
-        Args:
-            duty_cycle: Duty cycle from 0.0 to 1.0
-                       If invert_duty_cycle=True: 0.0=max speed, 1.0=stopped
-                       If invert_duty_cycle=False: 1.0=max speed, 0.0=stopped
+        Execute code via paste mode (Ctrl-E ... Ctrl-D). Waits until the REPL prompt returns.
         """
-        if not 0.0 <= duty_cycle <= 1.0:
-            raise ValueError(f"Duty cycle must be between 0.0 and 1.0, got {duty_cycle}")
+        self._ensure_open()
 
-        # Apply inversion if needed (Nidec: low duty = fast)
-        actual_duty = (1.0 - duty_cycle) if self.invert_duty_cycle else duty_cycle
+        # Clear any pending output so we start clean.
+        self.flush()
 
-        # Expand template with parameters
-        script = self.NIDEC_INIT_TEMPLATE.format(
-            pwm_pin=self.pwm_pin,
-            pwm_freq=self.pwm_freq,
-            duty_cycle=f"{actual_duty:.6f}"
+        # Enter paste mode
+        self._write(b"\x05")  # Ctrl-E
+        # Some ports print a paste-mode banner; we don't rely on exact text.
+        self._drain(0.15)
+
+        # Send code
+        if not code.endswith("\n"):
+            code += "\n"
+        self._write(code.encode("utf-8"))
+
+        # Exit paste mode and execute
+        self._write(b"\x04")  # Ctrl-D
+
+        # Read until prompt comes back
+        raw = self._read_until(_PROMPT, timeout=timeout)
+        return raw.decode("utf-8", errors="ignore")
+
+    def _read_until(self, needle: bytes, timeout: float) -> bytes:
+        self._ensure_open()
+        assert self.ser is not None
+
+        deadline = time.monotonic() + timeout
+        buf = bytearray()
+
+        while time.monotonic() < deadline:
+            chunk = self.ser.read(1024)
+            if chunk:
+                buf.extend(chunk)
+                if needle in buf:
+                    return bytes(buf)
+            else:
+                # no data this tick; keep looping until deadline
+                pass
+
+        raise TimeoutError(
+            f"Timed out waiting for {needle!r}. Got: {bytes(buf)[-300:]!r}"
         )
 
-        # Send script via pyboard
-        result = self._exec(script)
+    def _drain(self, duration: float) -> bytes:
+        self._ensure_open()
+        assert self.ser is not None
 
-        # Verify completion
-        if "done" not in result:
-            raise RuntimeError(f"Motor initialization failed. Output: {result}")
+        deadline = time.monotonic() + duration
+        buf = bytearray()
+        while time.monotonic() < deadline:
+            chunk = self.ser.read(1024)
+            if chunk:
+                buf.extend(chunk)
+        return bytes(buf)
 
-    def __enter__(self):
-        """Context manager entry."""
+    def _write(self, data: bytes) -> None:
+        self._ensure_open()
+        assert self.ser is not None
+        self.ser.write(data)
+
+    def _ensure_open(self) -> None:
+        if not self.ser or not self.ser.is_open:
+            raise RuntimeError("Serial session not open. Call open() first.")
+
+
+@dataclass(frozen=True)
+class NidecConfig:
+    pwm_freq: int = 20_000
+    invert_duty_cycle: bool = True
+    # If you ever need other pins, keep them in one place:
+    change_pin: int = 33
+    orange_pwm: int = 25
+    green_brake: int = 28
+    yellow_dir: int = 29
+    white_5v: int = 30
+
+
+class NidecMotorController:
+    """
+    Controls a Nidec-24H motor through Jumperless V5 running MicroPython.
+
+    Uploads a helper to the board once per connection; subsequent calls only update PWM duty.
+    """
+
+    _DEVICE_HELPER = textwrap.dedent(
+        """
+        import jumperless as j
+
+        CHANGE_PIN  = {change_pin}
+        ORANGE_PWM  = {orange_pwm}
+        GREEN_BRAKE = {green_brake}
+        YELLOW_DIR  = {yellow_dir}
+        WHITE_5V    = {white_5v}
+
+        _PWM_PIN = j.GPIO_1
+        _PWM_FREQ = {pwm_freq}
+
+        def _set_pin(pin, high):
+            if high:
+                j.disconnect(j.GND, pin)
+                j.connect(j.TOP_RAIL, pin)
+            else:
+                j.disconnect(j.TOP_RAIL, pin)
+                j.connect(j.GND, pin)
+
+        def nidec_init():
+            j.nodes_clear()
+            j.dac_set(j.TOP_RAIL, 3.3)
+
+            j.connect(_PWM_PIN, ORANGE_PWM)
+
+            # Static control lines
+            _set_pin(GREEN_BRAKE, True)  # brake released
+            _set_pin(YELLOW_DIR, True)
+            _set_pin(WHITE_5V, True)     # start
+
+        def nidec_set(duty):
+            # Toggle for timing measurements
+            _set_pin(CHANGE_PIN, True)
+            j.pwm(_PWM_PIN, _PWM_FREQ, duty)
+            _set_pin(CHANGE_PIN, False)
+
+        nidec_init()
+        print("__NIDEC_READY__")
+        """
+    ).strip() + "\n"
+
+    def __init__(self, port: str, baudrate: int = 115200, config: NidecConfig = NidecConfig()):
+        self._mp = MicroPythonPasteSession(port=port, baudrate=baudrate)
+        self._cfg = config
+        self._ready = False
+
+    def connect(self) -> None:
+        self._mp.open()
+        out = self._mp.exec_paste(self._DEVICE_HELPER.format(**self._cfg.__dict__), timeout=6.0)
+        if "__NIDEC_READY__" not in out:
+            raise RuntimeError(f"Device init did not confirm readiness. Output:\n{out}")
+        self._ready = True
+
+    def disconnect(self) -> None:
+        # Best-effort stop without reinitializing the whole board
+        try:
+            if self._ready:
+                self.stop()
+        finally:
+            self._ready = False
+            self._mp.close()
+
+    def set_speed(self, speed: float) -> None:
+        """
+        Set motor speed as 0.0..1.0 (human-friendly).
+        With invert_duty_cycle=True (Nidec behavior): speed↑ => duty↓.
+        """
+        self._ensure_ready()
+
+        if not 0.0 <= speed <= 1.0:
+            raise ValueError(f"speed must be between 0.0 and 1.0, got {speed}")
+
+        duty = (1.0 - speed) if self._cfg.invert_duty_cycle else speed
+
+        # Unique sentinel that we can check reliably
+        code = f"nidec_set({duty:.6f})\nprint('__NIDEC_OK__')\n"
+        out = self._mp.exec_paste(code, timeout=3.0)
+
+        if "__NIDEC_OK__" not in out:
+            raise RuntimeError(f"Speed update did not confirm. Output:\n{out}")
+
+    def stop(self) -> None:
+        # “stop” means speed=0.0 in our API
+        self.set_speed(0.0)
+
+    def _ensure_ready(self) -> None:
+        if not self._ready:
+            raise RuntimeError("Not connected/initialized. Call connect() first.")
+
+    def __enter__(self) -> "NidecMotorController":
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.disconnect()

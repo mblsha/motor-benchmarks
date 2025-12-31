@@ -26,7 +26,6 @@ def main():
         serial_baudrate=115200,
 
         # Nidec motor PWM settings
-        pwm_pin=1,  # Jumperless GPIO_1
         pwm_freq=20_000,  # 20kHz PWM (good balance for Nidec)
         invert_duty_cycle=True,  # Nidec: 0.0=max speed, 1.0=stop
         pulse_change_pin=False,  # Enable for timing measurements

@@ -25,7 +25,6 @@ class MotorSweep:
         self.motor = NidecMotorController(
             port=config.serial_port,
             baudrate=config.serial_baudrate,
-            pwm_pin=config.pwm_pin,
             pwm_freq=config.pwm_freq,
             invert_duty_cycle=config.invert_duty_cycle
         )

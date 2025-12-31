@@ -33,7 +33,6 @@ class SweepConfig:
     serial_baudrate: int = 115200
 
     # Nidec motor PWM settings
-    pwm_pin: int = 1  # Jumperless GPIO pin (GPIO_1)
     pwm_freq: int = 20_000  # PWM frequency in Hz (20kHz works well for Nidec)
     invert_duty_cycle: bool = True  # Nidec: 0=max speed, 1=stop
     pulse_change_pin: bool = False  # Set True to pulse CHANGE_PIN for timing
