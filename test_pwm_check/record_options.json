@@ -1,0 +1,20 @@
+{
+  "enabledChannels": [
+    {
+      "type": "LogicAnalyzerChannel",
+      "port": 0,
+      "channel": 0,
+      "minimumPulseWidthSamples": null
+    }
+  ],
+  "captureSettings": {
+    "type": "TimedCaptureSettings",
+    "durationSec": 0.1
+  },
+  "outputPath": "/Users/mblsha/src/github/motor-benchmarks/test_pwm_check",
+  "exportType": "Binary",
+  "exportAnalogFormat": "Volts",
+  "logicAnalyzerSettings": {
+    "threshold": 1.65
+  }
+}

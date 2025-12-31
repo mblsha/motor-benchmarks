@@ -1,0 +1,21 @@
+{
+  "enabledChannels": [
+    {
+      "type": "AnalogChannel",
+      "channel": 0,
+      "centerVoltage": 0.0,
+      "voltageRange": 5.0,
+      "probeAttenuation": "Probe10x"
+    }
+  ],
+  "captureSettings": {
+    "type": "TimedCaptureSettings",
+    "durationSec": 0.1
+  },
+  "outputPath": "/Users/mblsha/src/github/motor-benchmarks/test_vr_5",
+  "exportType": "Binary",
+  "exportAnalogFormat": "Volts",
+  "analogSettings": {
+    "downsampleRatio": 1000
+  }
+}

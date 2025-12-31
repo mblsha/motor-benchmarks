@@ -1,0 +1,32 @@
+cmd=capture record-data --json --args-path /Users/mblsha/src/github/motor-benchmarks/test_voltage_10x/record_options.json --out /Users/mblsha/src/github/motor-benchmarks/test_voltage_10x/record_result.json
+[2025-12-31 21:11:35.115282] [I] [tid 57960422] [main] [capture_commands.cpp:32] waiting for Logic Analyzer Smart Cable Detection...
+[2025-12-31 21:11:35.115287] [I] [tid 57960422] [main] [data_recorder.cpp:233] Waiting for instruments...
+[2025-12-31 21:11:35.115291] [I] [tid 57960422] [main] [data_recorder.cpp:182] Checking to see if instruments are available
+[2025-12-31 21:11:35.115292] [I] [tid 57960422] [main] [data_recorder.cpp:236] Are instruments available: true
+[2025-12-31 21:11:35.115292] [I] [tid 57960422] [main] [data_recorder.cpp:182] Checking to see if instruments are available
+[2025-12-31 21:11:35.115294] [I] [tid 57960422] [main] [capture_commands.cpp:48] Required instruments found! starting recording...
+[2025-12-31 21:11:35.115298] [I] [tid 57960422] [mso.scope] [oscilloscope_instrument.cpp:1565] Padding total samples from 4872 to 5120
+[2025-12-31 21:11:35.115340] [I] [tid 57960422] [main] [capture_commands.cpp:50] recording started. waiting for data to be collected...
+[2025-12-31 21:11:36.105456] [I] [tid 57960444] [device] [logic_analyzer_instrument.cpp:142] Logic Analyzer Smart Cable, Port 0, Orientation: CC1, Metadata: MSO LA Smart Cable Metadata
+	Metadata Version: Initial (1)
+	Assembly PN:      Initial (99200032)
+	Board PN:         Initial (91300003)
+	Board Revision:   Rev0B (3)
+	Board ID:         1885751073552681043 [0x1A2B889C39EB4853]
+
+[2025-12-31 21:11:36.198267] [I] [tid 57960428] [main] [profile.h:28] ProcessPendingConfiguration finished, took 1082.954 ms
+[2025-12-31 21:11:36.208744] [I] [tid 57960444] [device] [logic_analyzer_instrument.cpp:557] Resetting LogicAnalyzerInstrument to default configuration
+[2025-12-31 21:11:36.208760] [I] [tid 57960444] [mso] [mso_device.cpp:1065] Adding instrument index=1
+[2025-12-31 21:11:36.211237] [I] [tid 57960432] [device] [logic_analyzer_instrument.cpp:435] Setting smart cable configuration id port=0 id=1
+[2025-12-31 21:11:36.242482] [I] [tid 57960433] [mso.scope] [oscilloscope_instrument_utils.cpp:73] Did not receive all of previous waveform
+[2025-12-31 21:11:36.711585] [I] [tid 57960422] [main] [data_recorder.cpp:1143] Analog channel 0 collected data from 1767175896.196497549 to 1767175896.704529548, 0.5080319999999998 seconds. collection holds from 1767175896.196497549 to 1767175896.704529548, 0.5080319999999998 seconds
+[2025-12-31 21:11:36.711599] [I] [tid 57960422] [main] [data_recorder.cpp:756] Trim Span: 1767175896.196497549 to 1767175896.696497549, 0.5 seconds
+[2025-12-31 21:11:36.711607] [I] [tid 57960422] [main] [data_recorder.cpp:1143] Analog channel 0 collected data from 1767175896.196497549 to 1767175896.704529548, 0.5080319999999998 seconds. collection holds from 1767175896.196497549 to 1767175896.696497549, 0.5 seconds
+[2025-12-31 21:11:36.711621] [I] [tid 57960422] [main] [capture_commands.cpp:60] data collection complete! exporting...
+[2025-12-31 21:11:36.711635] [I] [tid 57960422] [main] [data_recorder.cpp:850] Export for analog 0, first/target waveform interval: (1767175896.196497549, 1767175896.696497549)
+[2025-12-31 21:11:36.711637] [I] [tid 57960422] [main] [data_recorder.cpp:853] set zero time to trigger time, 1767175896.196497549
+[2025-12-31 21:11:36.711638] [I] [tid 57960422] [main] [data_recorder.cpp:857] analog channel 0 contains 0 waveforms. Only the first is exported.
+[2025-12-31 21:11:36.711640] [I] [tid 57960422] [main] [data_recorder.cpp:883] Starting Export, time zero is set to 1767175896.196497549.		export interval: (1767175896.196497549, 1767175896.696497549)
+[2025-12-31 21:11:36.730806] [I] [tid 57960422] [main] [capture_commands.cpp:62] export complete! exiting...
+retcode=0 
+mso> 

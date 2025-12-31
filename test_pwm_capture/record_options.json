@@ -1,0 +1,21 @@
+{
+  "enabledChannels": [
+    {
+      "type": "AnalogChannel",
+      "channel": 0,
+      "centerVoltage": 0.0,
+      "voltageRange": 10.0,
+      "probeAttenuation": "Probe10x"
+    }
+  ],
+  "captureSettings": {
+    "type": "TimedCaptureSettings",
+    "durationSec": 0.01
+  },
+  "outputPath": "/Users/mblsha/src/github/motor-benchmarks/test_pwm_capture",
+  "exportType": "Binary",
+  "exportAnalogFormat": "Volts",
+  "analogSettings": {
+    "downsampleRatio": 104
+  }
+}

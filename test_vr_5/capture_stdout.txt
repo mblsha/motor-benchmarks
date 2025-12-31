@@ -1,0 +1,105 @@
+cmd=capture record-data --json --args-path /Users/mblsha/src/github/motor-benchmarks/test_vr_5/record_options.json --out /Users/mblsha/src/github/motor-benchmarks/test_vr_5/record_result.json
+[2025-12-31 21:16:28.050222] [I] [tid 57969129] [main] [profile.h:28] GetFirmwareVersion finished, took 1.862 ms
+[2025-12-31 21:16:28.055972] [I] [tid 57969129] [main] [profile.h:28] GetFirmwareVersion finished, took 1.724 ms
+[2025-12-31 21:16:28.326982] [I] [tid 57969129] [mso] [mso_device_interface.cpp:1080] Reading AFE Metadata
+[2025-12-31 21:16:29.372986] [I] [tid 57969129] [mso] [mso_device_interface.cpp:1089] Metadata is 6376 bytes
+[2025-12-31 21:16:29.373017] [I] [tid 57969129] [mso] [mso_device.cpp:300] Read MSO and AFE Metadata: 
+MSO Device Metadata
+	Metadata Version: Initial (1)
+	Pod PN:           MsoPod_4ch_100Mhz_9b_100Ms (99200063)
+	Board PN:         MsoMain_1_5_GB (91300009)
+	Board Revision:   Rev0B (2)
+	Board ID:         1580041361759993009 [0x15ED6F3F4220FCB1]
+	Device Serial:    B6KES
+
+MSO AFE Metadata
+	Metadata Version: Initial (1)
+	Board PN:         MsoAfe_4ch_9b (91300007)
+	Board Revision:   Rev0E (4)
+	Board ID:         5706489996828937159 [0x4F31866AF74F0BC7]
+
+[2025-12-31 21:16:29.373051] [I] [tid 57969129] [mso] [mso_device.cpp:434] MSO firmware version: 1.0.52, build date: Nov  4 2025, info: Joe Edition
+[2025-12-31 21:16:29.374940] [I] [tid 57969129] [mso] [mso_device.cpp:526] Firmware is up-to-date
+[2025-12-31 21:16:29.441451] [I] [tid 57969129] [device] [spi_flash.cpp:462] data size: 8192
+[2025-12-31 21:16:29.441457] [I] [tid 57969129] [device] [spi_flash.cpp:468] Last assert log: last_log_msg_ms=4294967295, log_start_index=4294967295
+[2025-12-31 21:16:29.441458] [C] [tid 57969129] [device] [spi_flash.cpp:471] Last assert log start index is too large, ignoring: 4294967295
+[2025-12-31 21:16:29.441486] [I] [tid 57969129] [mso] [mso_device.cpp:591] Waiting for wall power
+[2025-12-31 21:16:29.441493] [I] [tid 57969129] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=0%) to DSInitializing(msg=Waiting for wall power, progress=0%)
+[2025-12-31 21:16:29.441534] [I] [tid 57969142] [mso] [mso_device_mailbox.cpp:447] Initializing MSO
+[2025-12-31 21:16:29.443505] [I] [tid 57969142] [mso] [mso_device_mailbox.cpp:526] Starting interrupt read stream for ep 81 40
+[2025-12-31 21:16:29.447953] [I] [tid 57969190] [usb] [memory_pool.cpp:17] Memory pool created with max_chunks=16384, chunk_size_bytes=64
+[2025-12-31 21:16:29.448727] [I] [tid 57969142] [mso] [mso_device_mailbox.cpp:552] Starting async read stream for ep 84 4000
+[2025-12-31 21:16:29.453459] [I] [tid 57969191] [usb] [memory_pool.cpp:17] Memory pool created with max_chunks=256, chunk_size_bytes=4096
+[2025-12-31 21:16:29.454276] [I] [tid 57969142] [mso] [mso_device_interface.cpp:454] MSO power supply: output=20V, max_current: 1.5A
+[2025-12-31 21:16:29.461731] [I] [tid 57969142] [mso] [mso_device_interface.cpp:524] MSO power supply: output=20V, max_current: 1.5A
+[2025-12-31 21:16:29.578974] [I] [tid 57969142] [device] [pmic_tps650864.cpp:196] PMIC Lazy load register address=0xa0 value=0x0
+[2025-12-31 21:16:29.581263] [I] [tid 57969142] [device] [pmic_tps650864.cpp:196] PMIC Lazy load register address=0xa1 value=0x0
+[2025-12-31 21:16:29.628493] [I] [tid 57969142] [device] [mso_device_interface.cpp:1861] Programming Smart Cable IO Expander A
+[2025-12-31 21:16:29.699949] [I] [tid 57969142] [mso] [mso_device_interface.cpp:1325] Programming FPGA bitstream, 4639728 bytes
+[2025-12-31 21:16:30.816509] [I] [tid 57969142] [main] [profile.h:28] Programming FPGA  finished, took 1120.530 ms
+[2025-12-31 21:16:30.820979] [I] [tid 57969142] [device] [mso_device_interface.cpp:1957] Enabling hardware monitoring in firmware.
+[2025-12-31 21:16:30.823187] [I] [tid 57969142] [device] [mso_device_interface.cpp:1971] Enabling fan control in firmware.
+[2025-12-31 21:16:30.828978] [I] [tid 57969142] [mso] [fancontroller_lm96063.cpp:35] Setting critical temperature setpoint to 70 degrees C, hysteresis=5 degrees C
+[2025-12-31 21:16:30.838947] [I] [tid 57969142] [device] [mso_device_interface.cpp:1917] Programming Smart Cable IO Expander B
+[2025-12-31 21:16:30.879722] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=Waiting for wall power, progress=0%) to DSInitializing(msg=, progress=30%)
+[2025-12-31 21:16:30.879737] [I] [tid 57969142] [main] [mso_device_interface.cpp:595] Configuring IO Expander for Dc/Vga/Adc/Dac
+[2025-12-31 21:16:30.945728] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=30%) to DSInitializing(msg=, progress=40%)
+[2025-12-31 21:16:30.948366] [I] [tid 57969142] [main] [mso_device_interface.cpp:605] FPGA HW Revision: 3.64
+[2025-12-31 21:16:30.948375] [I] [tid 57969142] [mso.fpga] [mso_fpga.cpp:284] Waiting for DDR locked and calibrated
+[2025-12-31 21:16:31.417933] [I] [tid 57969142] [mso.fpga] [mso_fpga.cpp:297] Locked and calibrated DDR after 469 ms
+[2025-12-31 21:16:31.923950] [I] [tid 57969142] [main] [profile.h:28] Initializing Clock finished, took 495.494 ms
+[2025-12-31 21:16:31.923967] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=40%) to DSInitializing(msg=, progress=60%)
+[2025-12-31 21:16:31.941945] [I] [tid 57969142] [mso] [adc_12qj1600.cpp:143] ADC Vendor ID: 0451
+[2025-12-31 21:16:32.523621] [I] [tid 57969142] [main] [adc_12qj1600.cpp:176] ADC JesdStatus(link_up=false, sync_status=asserted, realigned=false, aligned=false, spll_locked=true, cpll_locked=true)
+[2025-12-31 21:16:32.523630] [I] [tid 57969142] [main] [adc_12qj1600.cpp:179] ADC Locked
+[2025-12-31 21:16:32.523636] [I] [tid 57969142] [main] [profile.h:28] Configuring ADC finished, took 599.657 ms
+[2025-12-31 21:16:32.523648] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=60%) to DSInitializing(msg=, progress=70%)
+[2025-12-31 21:16:32.526174] [I] [tid 57969142] [mso.fpga] [mso_fpga.cpp:345] JESD reset started, waiting for lock...
+[2025-12-31 21:16:32.658920] [I] [tid 57969142] [mso.fpga] [mso_fpga.cpp:364] Locked JESD after 132 ms, 0 retries
+[2025-12-31 21:16:32.674714] [I] [tid 57969142] [main] [profile.h:28] Resetting JESD Transceivers finished, took 151.060 ms
+[2025-12-31 21:16:32.683685] [I] [tid 57969142] [main] [mso_device_interface.cpp:669] ADC JesdStatus(link_up=false, sync_status=asserted, realigned=false, aligned=false, spll_locked=true, cpll_locked=true)
+[2025-12-31 21:16:32.683700] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=70%) to DSInitializing(msg=, progress=90%)
+[2025-12-31 21:16:33.074986] [I] [tid 57969142] [main] [profile.h:28] Waiting for ADC calibration to finish finished, took 391.281 ms
+[2025-12-31 21:16:33.110948] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=90%) to DSInitializing(msg=, progress=100%)
+[2025-12-31 21:16:33.110957] [I] [tid 57969142] [device] [mso_device_interface.cpp:682] Resetting FPGA timestamp
+[2025-12-31 21:16:33.113185] [I] [tid 57969142] [device] [mso_device_interface.cpp:685] Enabling smart ports
+[2025-12-31 21:16:33.140196] [I] [tid 57969142] [device] [mso_device_interface.cpp:302] Sending ScPdProcessingEnable, enabled=0x1f, disabled=0xffe0
+[2025-12-31 21:16:33.176932] [I] [tid 57969142] [main] [profile.h:28] Setting LED Color finished, took 2.256 ms
+[2025-12-31 21:16:33.176940] [I] [tid 57969142] [main] [profile.h:28] Initializing MSO finished, took 3716.994 ms
+[2025-12-31 21:16:33.207174] [I] [tid 57969142] [device] [mso_device_mailbox.cpp:672] MSO origin time is 10:16:33.191505 (timestamp_offset=557833ns)
+[2025-12-31 21:16:33.211968] [I] [tid 57969142] [mso] [mso_device_mailbox.cpp:700] Measured ADC/FPGA offset is 233 samples
+[2025-12-31 21:16:33.219022] [I] [tid 57969142] [mso.scope] [oscilloscope_instrument.cpp:1467] Resetting OscilloscopeInstrument to default configuration
+[2025-12-31 21:16:33.219042] [I] [tid 57969142] [mso.scope] [oscilloscope_instrument.cpp:1565] Padding total samples from 4872 to 5120
+[2025-12-31 21:16:33.219066] [I] [tid 57969142] [device] [GenericDevice.cpp:60] Updating device state (Mso/0x15ED6F3F4220FCB1) from DSInitializing(msg=, progress=100%) to DSReady()
+[2025-12-31 21:16:33.219070] [I] [tid 57969142] [mso.firmware] [mso_device_mailbox.cpp:162] [fw_thread 0] Wall power: PD contract established. Event count 0
+[2025-12-31 21:16:33.219071] [I] [tid 57969142] [mso] [mso_device_mailbox.cpp:447] Initializing MSO
+[2025-12-31 21:16:33.219071] [W] [tid 57969142] [mso] [mso_device_mailbox.cpp:452] Attempting to initialize, but device is no longer initializing
+[2025-12-31 21:16:33.223705] [I] [tid 57969295] [usb] [memory_pool.cpp:17] Memory pool created with max_chunks=8192, chunk_size_bytes=131072
+[2025-12-31 21:16:33.231337] [I] [tid 57969129] [main] [capture_commands.cpp:32] waiting for Logic Analyzer Smart Cable Detection...
+[2025-12-31 21:16:33.231346] [I] [tid 57969129] [main] [data_recorder.cpp:233] Waiting for instruments...
+[2025-12-31 21:16:33.231347] [I] [tid 57969129] [main] [data_recorder.cpp:182] Checking to see if instruments are available
+[2025-12-31 21:16:33.231348] [I] [tid 57969129] [main] [data_recorder.cpp:236] Are instruments available: true
+[2025-12-31 21:16:33.231348] [I] [tid 57969129] [main] [data_recorder.cpp:182] Checking to see if instruments are available
+[2025-12-31 21:16:33.231350] [I] [tid 57969129] [main] [capture_commands.cpp:48] Required instruments found! starting recording...
+[2025-12-31 21:16:33.231357] [I] [tid 57969129] [mso.scope] [oscilloscope_instrument.cpp:1565] Padding total samples from 4872 to 5120
+[2025-12-31 21:16:33.231395] [I] [tid 57969129] [main] [capture_commands.cpp:50] recording started. waiting for data to be collected...
+[2025-12-31 21:16:33.349734] [W] [tid 57969143] [mso.fpga] [mso_fpga.cpp:694] Setting a trigger holdoff or timeout in samples that is not a multiple of 8: 499999458
+[2025-12-31 21:16:33.351939] [W] [tid 57969143] [mso.fpga] [mso_fpga.cpp:694] Setting a trigger holdoff or timeout in samples that is not a multiple of 8: 497791375
+[2025-12-31 21:16:33.354434] [W] [tid 57969143] [mso.fpga] [mso_fpga.cpp:694] Setting a trigger holdoff or timeout in samples that is not a multiple of 8: 495296250
+[2025-12-31 21:16:33.356682] [W] [tid 57969143] [mso.fpga] [mso_fpga.cpp:694] Setting a trigger holdoff or timeout in samples that is not a multiple of 8: 493048750
+[2025-12-31 21:16:33.391976] [I] [tid 57969143] [main] [profile.h:28] ProcessPendingConfiguration finished, took 172.913 ms
+[2025-12-31 21:16:33.498698] [W] [tid 57969143] [mso.fpga] [mso_fpga.cpp:694] Setting a trigger holdoff or timeout in samples that is not a multiple of 8: 351049750
+[2025-12-31 21:16:33.524243] [I] [tid 57969143] [main] [profile.h:28] ProcessPendingConfiguration finished, took 132.234 ms
+[2025-12-31 21:16:33.938354] [I] [tid 57969158] [mso.firmware] [mso_device_mailbox.cpp:135] [fw_thread 0] Smart cable unplugged on port 0
+[2025-12-31 21:16:33.942435] [I] [tid 57969158] [mso] [mso_device.cpp:971] Smart Cable connected, fw_port=0
+[2025-12-31 21:16:33.988083] [I] [tid 57969129] [main] [data_recorder.cpp:1143] Analog channel 0 collected data from 1767176193.873497366 to 1767176193.981369366, 0.1078719999999999 seconds. collection holds from 1767176193.873497366 to 1767176193.981369366, 0.1078719999999999 seconds
+[2025-12-31 21:16:33.988092] [I] [tid 57969129] [main] [data_recorder.cpp:756] Trim Span: 1767176193.873497366 to 1767176193.973497366, 0.1 seconds
+[2025-12-31 21:16:33.988100] [I] [tid 57969129] [main] [data_recorder.cpp:1143] Analog channel 0 collected data from 1767176193.873497366 to 1767176193.981369366, 0.1078719999999999 seconds. collection holds from 1767176193.873497366 to 1767176193.973497366, 0.1 seconds
+[2025-12-31 21:16:33.988100] [I] [tid 57969129] [main] [capture_commands.cpp:60] data collection complete! exporting...
+[2025-12-31 21:16:33.988108] [I] [tid 57969129] [main] [data_recorder.cpp:850] Export for analog 0, first/target waveform interval: (1767176193.873497366, 1767176193.973497366)
+[2025-12-31 21:16:33.988109] [I] [tid 57969129] [main] [data_recorder.cpp:853] set zero time to trigger time, 1767176193.873497366
+[2025-12-31 21:16:33.988109] [I] [tid 57969129] [main] [data_recorder.cpp:857] analog channel 0 contains 0 waveforms. Only the first is exported.
+[2025-12-31 21:16:33.988110] [I] [tid 57969129] [main] [data_recorder.cpp:883] Starting Export, time zero is set to 1767176193.873497366.		export interval: (1767176193.873497366, 1767176193.973497366)
+[2025-12-31 21:16:33.990934] [I] [tid 57969129] [main] [capture_commands.cpp:62] export complete! exiting...
+retcode=0 
+mso> 

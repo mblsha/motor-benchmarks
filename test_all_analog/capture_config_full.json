@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "enabled_channels": [
+    {
+      "type": "AnalogChannel",
+      "channel": 0,
+      "centerVoltage": 0.0,
+      "voltageRange": 10.0,
+      "probeAttenuation": "Probe10x",
+      "name": "analog_0",
+      "bandwidthMhz": "MHz_350",
+      "coupling": "DC"
+    },
+    {
+      "type": "AnalogChannel",
+      "channel": 1,
+      "centerVoltage": 0.0,
+      "voltageRange": 10.0,
+      "probeAttenuation": "Probe10x",
+      "name": "analog_1",
+      "bandwidthMhz": "MHz_350",
+      "coupling": "DC"
+    },
+    {
+      "type": "AnalogChannel",
+      "channel": 2,
+      "centerVoltage": 0.0,
+      "voltageRange": 10.0,
+      "probeAttenuation": "Probe10x",
+      "name": "analog_2",
+      "bandwidthMhz": "MHz_350",
+      "coupling": "DC"
+    },
+    {
+      "type": "AnalogChannel",
+      "channel": 3,
+      "centerVoltage": 0.0,
+      "voltageRange": 10.0,
+      "probeAttenuation": "Probe10x",
+      "name": "analog_3",
+      "bandwidthMhz": "MHz_350",
+      "coupling": "DC"
+    }
+  ],
+  "analog_settings": {
+    "downsample_mode": "Drop",
+    "sample_rate": 1000000.0
+  },
+  "capture_settings": {
+    "type": "TimedCaptureSettings",
+    "capture_length_seconds": 0.5
+  }
+}

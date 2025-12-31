@@ -182,10 +182,7 @@ class NidecMotorController:
             _set_pin(WHITE_5V, True)     # start
 
         def nidec_set(duty):
-            # Toggle for timing measurements
-            _set_pin(CHANGE_PIN, True)
             j.pwm(_PWM_PIN, _PWM_FREQ, duty)
-            _set_pin(CHANGE_PIN, False)
 
         nidec_init()
         print("__NIDEC_READY__")
