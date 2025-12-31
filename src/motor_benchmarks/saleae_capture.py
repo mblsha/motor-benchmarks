@@ -27,7 +27,7 @@ class SaleaeCapture:
             RuntimeError: If no MSO device is found
         """
         self._mso = mso_api.MSO(serial_number=self.serial_number)
-        print(f"Connected to Saleae MSO: {self._mso.serial_number}")
+        print("Connected to Saleae MSO")
 
     def capture_encoder_data(
         self,
@@ -35,7 +35,8 @@ class SaleaeCapture:
         channels: list[int],
         save_dir: Path,
         channel_names: Optional[list[str]] = None,
-        threshold_volts: float = 1.65
+        threshold_volts: float = 1.65,
+        port: int = 0
     ) -> mso_api.Capture:
         """Capture encoder data from specified digital channels.
 
@@ -45,6 +46,7 @@ class SaleaeCapture:
             save_dir: Directory to save the capture data
             channel_names: Optional list of names for the channels (defaults to "encoder_0", "encoder_1", etc.)
             threshold_volts: Digital threshold voltage (default 1.65V for 3.3V logic)
+            port: Digital probe port number (default 0)
 
         Returns:
             Capture object with digital data
@@ -66,6 +68,7 @@ class SaleaeCapture:
             mso_api.DigitalChannel(
                 channel=ch,
                 name=name,
+                port=port,
                 threshold_volts=threshold_volts
             )
             for ch, name in zip(channels, channel_names)

@@ -7,7 +7,7 @@ from datetime import datetime
 import pandas as pd
 
 from .config import SweepConfig
-from .nidec_controller import NidecMotorController
+from .nidec_controller import NidecMotorController, NidecConfig
 from .saleae_capture import SaleaeCapture
 from .analysis import MotorAnalyzer
 
@@ -22,11 +22,17 @@ class MotorSweep:
             config: Sweep configuration
         """
         self.config = config
+
+        # Create Nidec configuration from sweep config
+        nidec_config = NidecConfig(
+            pwm_freq=config.pwm_freq,
+            invert_duty_cycle=config.invert_duty_cycle
+        )
+
         self.motor = NidecMotorController(
             port=config.serial_port,
             baudrate=config.serial_baudrate,
-            pwm_freq=config.pwm_freq,
-            invert_duty_cycle=config.invert_duty_cycle
+            config=nidec_config
         )
         self.saleae = SaleaeCapture()
         self.results: list[dict] = []
@@ -88,13 +94,9 @@ class MotorSweep:
         Returns:
             Dictionary with measurement results
         """
-        # Set PWM duty cycle
-        print(f"  Setting PWM to {duty_cycle:.2%}...")
-        self.motor.set_pwm_duty_cycle(duty_cycle)
-
-        # Pulse change pin for timing measurement (if needed)
-        if hasattr(self.config, 'pulse_change_pin') and self.config.pulse_change_pin:
-            self.motor.pulse_change_pin()
+        # Set motor speed (duty_cycle is the speed in our API)
+        print(f"  Setting motor speed to {duty_cycle:.2%}...")
+        self.motor.set_speed(duty_cycle)
 
         # Wait for motor to stabilize
         print(f"  Settling for {self.config.settle_time}s...")
@@ -108,7 +110,8 @@ class MotorSweep:
             channels=self.config.encoder_channels,
             save_dir=capture_dir,
             channel_names=[f"encoder_{i}" for i in range(len(self.config.encoder_channels))],
-            threshold_volts=self.config.threshold_volts
+            threshold_volts=self.config.threshold_volts,
+            port=0  # All digital channels on port 0
         )
 
         # Calculate and save RPM data

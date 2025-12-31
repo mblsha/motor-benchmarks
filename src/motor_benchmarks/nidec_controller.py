@@ -17,6 +17,7 @@ import serial
 
 
 _PROMPT = b">>> "
+_RAW_REPL_PROMPT = b"\x04>"
 
 
 class MicroPythonPasteSession:
@@ -62,16 +63,16 @@ class MicroPythonPasteSession:
 
     def exec_paste(self, code: str, timeout: float = 5.0) -> str:
         """
-        Execute code via paste mode (Ctrl-E ... Ctrl-D). Waits until the REPL prompt returns.
+        Execute code via raw REPL (Ctrl-A ... Ctrl-D). Waits until the REPL prompt returns.
         """
         self._ensure_open()
 
         # Clear any pending output so we start clean.
         self.flush()
 
-        # Enter paste mode
-        self._write(b"\x05")  # Ctrl-E
-        # Some ports print a paste-mode banner; we don't rely on exact text.
+        # Enter raw REPL mode
+        self._write(b"\x01")  # Ctrl-A
+        # Wait for raw REPL prompt
         self._drain(0.15)
 
         # Send code
@@ -79,11 +80,11 @@ class MicroPythonPasteSession:
             code += "\n"
         self._write(code.encode("utf-8"))
 
-        # Exit paste mode and execute
+        # Execute code
         self._write(b"\x04")  # Ctrl-D
 
-        # Read until prompt comes back
-        raw = self._read_until(_PROMPT, timeout=timeout)
+        # Read until raw REPL prompt comes back
+        raw = self._read_until(_RAW_REPL_PROMPT, timeout=timeout)
         return raw.decode("utf-8", errors="ignore")
 
     def _read_until(self, needle: bytes, timeout: float) -> bytes:
