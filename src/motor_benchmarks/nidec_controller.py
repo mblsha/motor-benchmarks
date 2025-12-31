@@ -243,3 +243,87 @@ class NidecMotorController:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.disconnect()
+
+
+def main():
+    """CLI for testing Nidec motor controller."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Control Nidec-24H motor via Jumperless')
+    parser.add_argument('--port', default='/dev/cu.usbmodemJLV5port5',
+                        help='Serial port for Jumperless (default: /dev/cu.usbmodemJLV5port5)')
+    parser.add_argument('--freq', type=int, default=20_000,
+                        help='PWM frequency in Hz (default: 20000)')
+    parser.add_argument('--speed', type=float, default=0.5,
+                        help='Motor speed 0.0-1.0 (default: 0.5)')
+    parser.add_argument('--duty', type=float, default=None,
+                        help='PWM duty cycle 0.0-1.0 (overrides --speed, no inversion)')
+    parser.add_argument('--no-invert', action='store_true',
+                        help='Disable duty cycle inversion (speed=duty)')
+    parser.add_argument('--duration', type=float, default=None,
+                        help='Run for specified seconds then stop (default: run until Ctrl-C)')
+
+    args = parser.parse_args()
+
+    # Validate
+    if args.duty is not None:
+        if not 0.0 <= args.duty <= 1.0:
+            parser.error('--duty must be between 0.0 and 1.0')
+        use_duty = args.duty
+        mode = 'duty'
+    else:
+        if not 0.0 <= args.speed <= 1.0:
+            parser.error('--speed must be between 0.0 and 1.0')
+        use_duty = args.speed
+        mode = 'speed'
+
+    # Create config
+    config = NidecConfig(
+        pwm_freq=args.freq,
+        invert_duty_cycle=(not args.no_invert) and (mode == 'speed')
+    )
+
+    # Connect and run
+    motor = NidecMotorController(port=args.port, baudrate=115200, config=config)
+
+    try:
+        print(f'Connecting to Jumperless on {args.port}...')
+        motor.connect()
+        print('✓ Connected')
+
+        if mode == 'duty':
+            actual_duty = use_duty
+            print(f'\nSetting PWM: {args.freq}Hz, {actual_duty:.1%} duty cycle')
+        else:
+            actual_duty = (1.0 - use_duty) if config.invert_duty_cycle else use_duty
+            print(f'\nSetting motor speed: {use_duty:.1%}')
+            print(f'  (PWM: {args.freq}Hz, {actual_duty:.1%} duty cycle {"[inverted]" if config.invert_duty_cycle else ""})')
+
+        motor.set_speed(use_duty)
+        print('✓ Motor running')
+
+        if args.duration:
+            print(f'\nRunning for {args.duration}s... (Ctrl-C to stop early)')
+            time.sleep(args.duration)
+        else:
+            print('\nMotor running... Press Ctrl-C to stop')
+            while True:
+                time.sleep(1.0)
+
+    except KeyboardInterrupt:
+        print('\n\nStopping motor...')
+    except Exception as e:
+        print(f'\nError: {e}')
+        import traceback
+        traceback.print_exc()
+        return 1
+    finally:
+        motor.disconnect()
+        print('✓ Disconnected')
+
+    return 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
