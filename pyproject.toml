@@ -1,0 +1,28 @@
+[project]
+name = "motor-benchmarks"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Michael Pishchagin", email = "mblsha+gh@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "mpremote>=1.27.0",
+    "numpy>=2.4.0",
+    "pandas>=2.3.3",
+    "plumbum>=1.10.0",
+    "pyserial>=3.5",
+    "saleae-mso-api>=0.5.4",
+]
+
+[project.scripts]
+motor-benchmarks = "motor_benchmarks.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+url = "https://downloads.saleae.com/pypi"
