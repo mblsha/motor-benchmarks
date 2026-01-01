@@ -9,7 +9,7 @@ import pandas as pd
 from saleae import mso_api
 
 EdgeType = Literal["rising", "falling", "both"]
-DecodeMode = Literal["x1", "x2", "x4"]
+RpmMethod = Literal["windowed", "edge_to_edge"]
 
 
 def _edge_times(digital_data, edge_type: EdgeType) -> np.ndarray:
@@ -33,6 +33,105 @@ def _edge_times(digital_data, edge_type: EdgeType) -> np.ndarray:
     if edge_type == "falling":
         return tt[before]
     return tt
+
+
+def _check_quadrature_health(
+    cha_data,
+    chb_data,
+    ratio_bounds: Tuple[float, float] = (0.7, 1.3),
+) -> Tuple[bool, float, str]:
+    """
+    Check if CHB signal is healthy enough for quadrature decoding.
+
+    Args:
+        cha_data: Channel A digital data
+        chb_data: Channel B digital data
+        ratio_bounds: Acceptable CHB/CHA transition ratio range (default: 0.7-1.3)
+
+    Returns:
+        (is_healthy, ratio, message)
+    """
+    cha_count = len(cha_data.transition_times)
+    chb_count = len(chb_data.transition_times)
+
+    if cha_count == 0:
+        return False, 0.0, "CHA has no transitions"
+
+    ratio = chb_count / cha_count
+
+    if ratio < ratio_bounds[0]:
+        return False, ratio, f"CHB has only {ratio:.1%} of CHA transitions (expected ~100%)"
+    if ratio > ratio_bounds[1]:
+        return False, ratio, f"CHB has {ratio:.1%} of CHA transitions (expected ~100%)"
+
+    return True, ratio, f"CHB/CHA ratio {ratio:.3f} is healthy"
+
+
+def rpm_from_edges(
+    edge_times: np.ndarray,
+    pulses_per_revolution: int,
+    edge_type: EdgeType,
+    method: RpmMethod = "windowed",
+    window_edges: int = 200,
+    trim_quantiles: Optional[Tuple[float, float]] = (0.001, 0.999),
+) -> pd.DataFrame:
+    """
+    Calculate RPM from edge timestamps.
+
+    Args:
+        edge_times: Array of edge timestamps (seconds)
+        pulses_per_revolution: Encoder PPR (cycles per revolution on one channel)
+        edge_type: Which edges were counted ("rising", "falling", "both")
+        method: "windowed" (robust, recommended) or "edge_to_edge" (debug only)
+        window_edges: Number of edges per window for windowed method (default 200)
+        trim_quantiles: For edge_to_edge only, trim outliers at these quantiles
+
+    Returns:
+        DataFrame with columns: time, rpm
+
+    Note:
+        - "windowed" method is robust to glitches and outliers (recommended)
+        - "edge_to_edge" method is sensitive to noise and produces extreme outliers
+          Use edge_to_edge only for debugging with trim_quantiles enabled
+    """
+    edge_times = np.asarray(edge_times, dtype=float)
+    if edge_times.size < 2:
+        return pd.DataFrame({"time": [], "rpm": []})
+
+    edges_per_rev = pulses_per_revolution * (2 if edge_type == "both" else 1)
+
+    if method == "edge_to_edge":
+        dt = np.diff(edge_times)
+        good = dt > 0
+        dt = dt[good]
+        t = edge_times[1:][good]
+        if dt.size == 0:
+            return pd.DataFrame({"time": [], "rpm": []})
+
+        rpm = 60.0 / (dt * edges_per_rev)
+
+        # Optional trimming to prevent insane spikes dominating stats/plots
+        if trim_quantiles is not None and rpm.size > 10:
+            lo, hi = np.quantile(rpm, trim_quantiles)
+            keep = (rpm >= lo) & (rpm <= hi)
+            rpm = rpm[keep]
+            t = t[keep]
+
+        return pd.DataFrame({"time": t, "rpm": rpm})
+
+    # method == "windowed"
+    if edge_times.size <= window_edges:
+        return pd.DataFrame({"time": [], "rpm": []})
+
+    dt = edge_times[window_edges:] - edge_times[:-window_edges]
+    good = dt > 0
+    dt = dt[good]
+    t = edge_times[window_edges:][good]
+    if dt.size == 0:
+        return pd.DataFrame({"time": [], "rpm": []})
+
+    rpm = 60.0 * window_edges / (dt * edges_per_rev)
+    return pd.DataFrame({"time": t, "rpm": rpm})
 
 
 class SaleaeCapture:
@@ -65,6 +164,7 @@ class SaleaeCapture:
         digital_names: Optional[list[str]] = None,
         digital_port: int = 0,
         threshold_volts: float = 1.65,  # Default for 3.3V logic (measure your encoder voltage!)
+        minimum_pulse_width_samples: Optional[int] = None,  # Glitch filter: reject pulses shorter than N samples
         analog_channels: Optional[list[int]] = None,
         analog_names: Optional[list[str]] = None,
         analog_voltage_range: float = 20.0,
@@ -79,6 +179,7 @@ class SaleaeCapture:
             digital_names: Optional list of names for digital channels
             digital_port: Digital probe port number (default 0)
             threshold_volts: Digital threshold voltage (default 1.65V for 3.3V logic)
+            minimum_pulse_width_samples: Optional glitch filter (rejects pulses shorter than N samples)
             analog_channels: Optional list of analog channel numbers to capture
             analog_names: Optional list of names for analog channels
             analog_voltage_range: Voltage range for analog channels (default 20.0V for 10X probe)
@@ -103,14 +204,15 @@ class SaleaeCapture:
                 raise ValueError("Number of digital names must match number of digital channels")
 
             for ch, name in zip(digital_channels, digital_names):
-                enabled_channels.append(
-                    mso_api.DigitalChannel(
-                        channel=ch,
-                        name=name,
-                        port=digital_port,
-                        threshold_volts=threshold_volts
-                    )
-                )
+                dc_kwargs = {
+                    "channel": ch,
+                    "name": name,
+                    "port": digital_port,
+                    "threshold_volts": threshold_volts
+                }
+                if minimum_pulse_width_samples is not None:
+                    dc_kwargs["minimum_pulse_width_samples"] = minimum_pulse_width_samples
+                enabled_channels.append(mso_api.DigitalChannel(**dc_kwargs))
 
         # Configure analog channels
         if analog_channels:
@@ -156,6 +258,7 @@ class SaleaeCapture:
         save_dir: Path,
         channel_names: Optional[list[str]] = None,
         threshold_volts: float = 1.65,  # Default for 3.3V logic
+        minimum_pulse_width_samples: Optional[int] = None,
         port: int = 0
     ) -> mso_api.Capture:
         """Capture encoder data from digital channels (legacy method).
@@ -166,6 +269,7 @@ class SaleaeCapture:
             save_dir: Directory to save the capture data
             channel_names: Optional list of names for the channels
             threshold_volts: Digital threshold voltage (default 2.5V for 5V logic)
+            minimum_pulse_width_samples: Optional glitch filter (rejects pulses shorter than N samples)
             port: Digital probe port number (default 0)
 
         Returns:
@@ -177,7 +281,8 @@ class SaleaeCapture:
             digital_channels=channels,
             digital_names=channel_names,
             digital_port=port,
-            threshold_volts=threshold_volts
+            threshold_volts=threshold_volts,
+            minimum_pulse_width_samples=minimum_pulse_width_samples
         )
 
     def calculate_rpm_from_encoder(
@@ -185,29 +290,34 @@ class SaleaeCapture:
         digital_data,
         pulses_per_revolution: int = 100,   # Nidec 24H is 100 PPR
         edge_type: EdgeType = "rising",
+        method: RpmMethod = "windowed",
+        window_edges: int = 200,
     ) -> pd.DataFrame:
         """
         Calculate RPM from a single encoder channel.
 
-        IMPORTANT:
-          - pulses_per_revolution is PPR (cycles per rev on one channel).
-          - If edge_type == "both", we count 2 edges per pulse, so effective counts/rev doubles.
+        Args:
+            digital_data: Saleae digital channel data object
+            pulses_per_revolution: PPR (cycles per revolution on one channel)
+            edge_type: "rising", "falling", or "both"
+            method: "windowed" (robust, default) or "edge_to_edge" (debug only)
+            window_edges: Number of edges per window (default 200)
+
+        Returns:
+            DataFrame with columns: time, rpm
+
+        Note:
+            Windowed method is strongly recommended for production use.
+            Edge-to-edge method can produce extreme outliers from noise.
         """
-        edge_times = _edge_times(digital_data, edge_type=edge_type)
-        if edge_times.size < 2:
-            return pd.DataFrame({"time": [], "rpm": []})
-
-        dt = np.diff(edge_times)
-        dt = dt[dt > 0]  # safety against any weird duplicates
-
-        if dt.size == 0:
-            return pd.DataFrame({"time": [], "rpm": []})
-
-        edges_per_rev = pulses_per_revolution * (2 if edge_type == "both" else 1)
-        rpm = 60.0 / (dt * edges_per_rev)
-
-        # time aligns with the second edge in each dt interval
-        return pd.DataFrame({"time": edge_times[1:1 + rpm.size], "rpm": rpm})
+        edges = _edge_times(digital_data, edge_type=edge_type)
+        return rpm_from_edges(
+            edges,
+            pulses_per_revolution=pulses_per_revolution,
+            edge_type=edge_type,
+            method=method,
+            window_edges=window_edges,
+        )
 
     def calculate_rpm_from_quadrature(
         self,
@@ -334,37 +444,82 @@ class SaleaeCapture:
         channel_b_name: Optional[str] = None,
         signed: bool = False,
         invert_direction: bool = False,
+        method: RpmMethod = "windowed",
+        window_edges: int = 200,
+        auto_fallback: bool = True,
     ) -> pd.DataFrame:
         """
-        If channel_b_name is provided, do quadrature X4 decode on (channel_name, channel_b_name).
-        Otherwise, do single-channel edge timing on channel_name.
+        Calculate and save RPM data from encoder capture.
 
-        Nidec 24H encoder is 100 PPR quadrature.
+        Args:
+            capture: Saleae capture object
+            output_file: Path to save CSV output
+            channel_name: Name of encoder channel A
+            pulses_per_revolution: Encoder PPR (100 for Nidec 24H)
+            edge_type: "rising", "falling", or "both"
+            channel_b_name: Optional channel B for quadrature decode
+            signed: Return signed RPM (requires quadrature)
+            invert_direction: Invert rotation direction
+            method: "windowed" (robust, default) or "edge_to_edge" (debug)
+            window_edges: Number of edges per window (default 200)
+            auto_fallback: Automatically fall back to single-channel if CHB unhealthy
+
+        Returns:
+            DataFrame with RPM data
+
+        Note:
+            - Quadrature decoding requires healthy CHB signal (ratio 0.7-1.3 to CHA)
+            - If auto_fallback=True and CHB is unhealthy, uses single-channel CHA only
+            - Windowed method strongly recommended for production use
         """
         if channel_name not in capture.digital_data:
             raise ValueError(f"Channel '{channel_name}' not in capture.digital_data. Available: {list(capture.digital_data)}")
 
         output_file = Path(output_file)
 
-        if channel_b_name is None:
-            dd = capture.digital_data[channel_name]
-            rpm_df = self.calculate_rpm_from_encoder(
-                dd, pulses_per_revolution=pulses_per_revolution, edge_type=edge_type
-            )
-        else:
+        # Attempt quadrature decode if channel_b_name provided
+        if channel_b_name is not None:
             if channel_b_name not in capture.digital_data:
                 raise ValueError(f"Channel '{channel_b_name}' not in capture.digital_data. Available: {list(capture.digital_data)}")
 
             cha = capture.digital_data[channel_name]
             chb = capture.digital_data[channel_b_name]
-            rpm_df, diag = self.calculate_rpm_from_quadrature(
-                cha, chb,
-                pulses_per_revolution=pulses_per_revolution,
-                signed=signed,
-                invert_direction=invert_direction,
-            )
-            # Optional: log quadrature health
-            print(f"  Quadrature decode used_edges={diag['used_edges']} invalid_transitions={diag['invalid_transitions']}")
+
+            # Check CHB health
+            is_healthy, ratio, msg = _check_quadrature_health(cha, chb)
+
+            if not is_healthy:
+                warning = f"  ⚠️  {msg}"
+                print(warning)
+                if auto_fallback:
+                    print(f"  → Falling back to single-channel {channel_name} (auto_fallback=True)")
+                    channel_b_name = None  # Fall through to single-channel path
+                else:
+                    print(f"  → Attempting quadrature decode anyway (auto_fallback=False)")
+
+            if channel_b_name is not None:  # Still doing quadrature after health check
+                print(f"  ✓ {msg} - using quadrature X4 decode")
+                rpm_df, diag = self.calculate_rpm_from_quadrature(
+                    cha, chb,
+                    pulses_per_revolution=pulses_per_revolution,
+                    signed=signed,
+                    invert_direction=invert_direction,
+                )
+                print(f"  Quadrature decode: used_edges={diag['used_edges']} invalid_transitions={diag['invalid_transitions']}")
+
+                rpm_df.to_csv(output_file, index=False)
+                print(f"  RPM data saved to: {output_file}")
+                return rpm_df
+
+        # Single-channel decode path
+        dd = capture.digital_data[channel_name]
+        rpm_df = self.calculate_rpm_from_encoder(
+            dd,
+            pulses_per_revolution=pulses_per_revolution,
+            edge_type=edge_type,
+            method=method,
+            window_edges=window_edges,
+        )
 
         rpm_df.to_csv(output_file, index=False)
         print(f"  RPM data saved to: {output_file}")

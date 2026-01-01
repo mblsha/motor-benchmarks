@@ -111,6 +111,7 @@ class MotorSweep:
             save_dir=capture_dir,
             channel_names=[f"encoder_{i}" for i in range(len(self.config.encoder_channels))],
             threshold_volts=self.config.threshold_volts,
+            minimum_pulse_width_samples=self.config.minimum_pulse_width_samples,
             port=0  # All digital channels on port 0
         )
 
@@ -123,7 +124,9 @@ class MotorSweep:
             output_file=rpm_file,
             channel_name="encoder_0",  # Use first encoder channel
             pulses_per_revolution=self.config.pulses_per_revolution,
-            edge_type=self.config.edge_type
+            edge_type=self.config.edge_type,
+            method=self.config.rpm_method,
+            window_edges=self.config.window_edges
         )
 
         # Calculate statistics

@@ -38,12 +38,17 @@ class SweepConfig:
     pulse_change_pin: bool = False  # Set True to pulse CHANGE_PIN for timing
 
     # Saleae MSO settings
+    # NOTE: All digital channels on the same port share the same threshold voltage
+    # If different thresholds needed, channels must be on different ports
     encoder_channels: list[int] = field(default_factory=lambda: [0])  # Digital channels for encoder
     threshold_volts: float = 1.65  # Digital threshold voltage (1.65V for 3.3V logic)
+    minimum_pulse_width_samples: Optional[int] = 3  # Glitch filter (in samples, not seconds)
 
     # Encoder settings
     pulses_per_revolution: int = 1  # Number of encoder pulses per motor revolution
     edge_type: str = 'rising'  # Count 'rising', 'falling', or 'both' edges
+    rpm_method: str = 'windowed'  # 'windowed' (robust) or 'edge_to_edge' (debug only)
+    window_edges: int = 200  # Number of edges per window for windowed RPM
 
     # Output settings
     output_dir: Path = field(default_factory=lambda: Path("./results"))

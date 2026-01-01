@@ -1,17 +1,23 @@
+# Test data directories
+diagnostic_capture/
+glitch_filter_*/
+optimal_test_*/
+sweep_results/
+test_*/
+threshold_test_*/
+verify_*/
+windowed_rpm_test/
+
+# Results
+results/
+
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+*.pyc
+*.pyo
 *.egg-info/
-dist/
-build/
-
-# Virtual environments
-.venv/
-venv/
-ENV/
+.pytest_cache/
+.coverage
 
 # IDE
 .vscode/
@@ -19,10 +25,6 @@ ENV/
 *.swp
 *.swo
 *~
-
-# Results
-results/
-test_capture/
 
 # OS
 .DS_Store
