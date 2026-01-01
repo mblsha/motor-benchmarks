@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Literal, Tuple
+from typing import Any, Optional, Literal, Tuple
 import numpy as np
 import pandas as pd
 from saleae import mso_api
 
+from .bench import TachMeasurement
 EdgeType = Literal["rising", "falling", "both"]
 RpmMethod = Literal["windowed", "edge_to_edge"]
 
@@ -557,6 +559,21 @@ class SaleaeCapture:
             'cv': float(std_rpm / mean_rpm * 100) if mean_rpm > 0 else 0.0
         }
 
+    def close(self) -> None:
+        """Close device connection if supported by the MSO API."""
+        if self._mso is None:
+            return
+        close_fn = getattr(self._mso, "close", None)
+        if callable(close_fn):
+            close_fn()
+        self._mso = None
+
+    def healthcheck(self) -> dict[str, Any]:
+        return {
+            "connected": self._mso is not None,
+            "serial_number": self.serial_number,
+        }
+
     def __enter__(self):
         """Context manager entry."""
         self.connect()
@@ -564,5 +581,147 @@ class SaleaeCapture:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        # MSO API handles cleanup automatically
-        pass
+        self.close()
+
+
+@dataclass(frozen=True)
+class SaleaeTachConfig:
+    encoder_channels: list[int] | None = None
+    threshold_volts: float = 1.65
+    minimum_pulse_width_samples: Optional[int] = None
+    pulses_per_revolution: int = 1
+    edge_type: EdgeType = "rising"
+    rpm_method: RpmMethod = "windowed"
+    window_edges: int = 200
+    digital_port: int = 0
+    channel_b_index: Optional[int] = 1
+    signed: bool = False
+    invert_direction: bool = False
+    auto_fallback: bool = True
+    motor_voltage_channel: Optional[int] = 0
+    motor_voltage_name: str = "motor_voltage"
+    analog_voltage_range: float = 20.0
+    analog_probe_attenuation: mso_api.ProbeAttenuation = mso_api.ProbeAttenuation.PROBE_10X
+
+    def __post_init__(self) -> None:
+        if self.encoder_channels is None:
+            object.__setattr__(self, "encoder_channels", [1, 2])
+
+
+def _analog_mean(data) -> float | None:
+    if hasattr(data, "voltages"):
+        voltages = np.asarray(data.voltages, dtype=float)
+    elif hasattr(data, "traces"):
+        traces = [np.asarray(trace.voltages, dtype=float) for trace in data.traces]
+        voltages = np.concatenate(traces) if traces else np.array([], dtype=float)
+    else:
+        return None
+    if voltages.size == 0:
+        return None
+    return float(voltages.mean())
+
+
+class SaleaeTachometer:
+    """Tachometer adapter using SaleaeCapture + RPM processing."""
+
+    def __init__(self, config: SaleaeTachConfig, serial_number: Optional[str] = None):
+        self.config = config
+        self._capture = SaleaeCapture(serial_number=serial_number)
+
+    def connect(self) -> None:
+        self._capture.connect()
+
+    def close(self) -> None:
+        self._capture.close()
+
+    def healthcheck(self) -> dict[str, Any]:
+        info = self._capture.healthcheck()
+        info.update(
+            {
+                "encoder_channels": self.config.encoder_channels,
+                "threshold_volts": self.config.threshold_volts,
+                "motor_voltage_channel": self.config.motor_voltage_channel,
+            }
+        )
+        return info
+
+    def measure(
+        self,
+        *,
+        duration_s: float,
+        capture_dir: Path,
+        rpm_file: Path,
+    ) -> TachMeasurement:
+        capture_dir = Path(capture_dir)
+        rpm_file = Path(rpm_file)
+        rpm_file.parent.mkdir(parents=True, exist_ok=True)
+
+        channel_names = [f"encoder_{i}" for i in range(len(self.config.encoder_channels))]
+        analog_channels = None
+        analog_names = None
+        if self.config.motor_voltage_channel is not None:
+            analog_channels = [self.config.motor_voltage_channel]
+            analog_names = [self.config.motor_voltage_name]
+
+        capture = self._capture.capture_mixed_data(
+            duration=duration_s,
+            save_dir=capture_dir,
+            digital_channels=self.config.encoder_channels,
+            digital_names=channel_names,
+            digital_port=self.config.digital_port,
+            threshold_volts=self.config.threshold_volts,
+            minimum_pulse_width_samples=self.config.minimum_pulse_width_samples,
+            analog_channels=analog_channels,
+            analog_names=analog_names,
+            analog_voltage_range=self.config.analog_voltage_range,
+            analog_probe_attenuation=self.config.analog_probe_attenuation,
+        )
+
+        if not channel_names:
+            raise ValueError("No encoder channels configured for tachometer")
+
+        channel_a_name = channel_names[0]
+        channel_b_name = None
+        if self.config.channel_b_index is not None:
+            if not 0 <= self.config.channel_b_index < len(channel_names):
+                raise ValueError(
+                    f"channel_b_index {self.config.channel_b_index} out of range for "
+                    f"{len(channel_names)} encoder channels"
+                )
+            channel_b_name = channel_names[self.config.channel_b_index]
+
+        rpm_df = self._capture.save_rpm_data(
+            capture=capture,
+            output_file=rpm_file,
+            channel_name=channel_a_name,
+            pulses_per_revolution=self.config.pulses_per_revolution,
+            edge_type=self.config.edge_type,
+            channel_b_name=channel_b_name,
+            signed=self.config.signed,
+            invert_direction=self.config.invert_direction,
+            method=self.config.rpm_method,
+            window_edges=self.config.window_edges,
+            auto_fallback=self.config.auto_fallback,
+        )
+
+        motor_voltage_mean = None
+        if analog_names:
+            analog_name = analog_names[0]
+            analog_data = capture.analog_data.get(analog_name)
+            if analog_data is not None:
+                motor_voltage_mean = _analog_mean(analog_data)
+
+        diag = {
+            "channel_a_name": channel_a_name,
+            "channel_b_name": channel_b_name,
+            "encoder_channels": self.config.encoder_channels,
+            "pulses_per_revolution": self.config.pulses_per_revolution,
+        }
+
+        return TachMeasurement(
+            rpm_df=rpm_df,
+            capture_dir=capture_dir,
+            rpm_file=rpm_file,
+            diag=diag,
+            motor_voltage_mean=motor_voltage_mean,
+        )

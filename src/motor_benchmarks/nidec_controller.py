@@ -11,10 +11,11 @@ from __future__ import annotations
 import time
 import textwrap
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import serial
 
+from .bench import PwmCommand
 
 _PROMPT = b">>> "
 _RAW_REPL_PROMPT = b"\x04>"
@@ -229,9 +230,29 @@ class NidecMotorController:
         if "__NIDEC_OK__" not in out:
             raise RuntimeError(f"Speed update did not confirm. Output:\n{out}")
 
+    def apply(self, cmd: PwmCommand) -> None:
+        if cmd.freq_hz is not None and cmd.freq_hz != self._cfg.pwm_freq:
+            raise ValueError(
+                "NidecMotorController does not support per-command PWM frequency changes. "
+                "Set pwm_freq in NidecConfig instead."
+            )
+        self.set_speed(cmd.duty)
+
     def stop(self) -> None:
         # “stop” means speed=0.0 in our API
         self.set_speed(0.0)
+
+    def close(self) -> None:
+        self.disconnect()
+
+    def healthcheck(self) -> dict[str, Any]:
+        return {
+            "connected": self._ready,
+            "port": self._mp.port,
+            "baudrate": self._mp.baudrate,
+            "pwm_freq": self._cfg.pwm_freq,
+            "invert_duty_cycle": self._cfg.invert_duty_cycle,
+        }
 
     def _ensure_ready(self) -> None:
         if not self._ready:

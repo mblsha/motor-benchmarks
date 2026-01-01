@@ -6,6 +6,7 @@ Parameter sweep system for motor characterization using Jumperless V5 (MicroPyth
 
 - **PWM Control**: Control motor via Jumperless V5 MicroPython serial interface
 - **Data Acquisition**: Capture encoder signals using Saleae MSO API (v0.5.4+)
+- **Motor Voltage**: Capture analog motor voltage (A0) and store average per point
 - **Parameter Sweeps**: Automated duty cycle sweeps with configurable parameters
 - **Analysis**: RPM statistics, time-series plots, and efficiency curves
 - **Type-safe Configuration**: Python dataclass-based configuration
@@ -25,31 +26,24 @@ uv pip install -e .
 
 ### 1. Configure Your Setup
 
-Edit `src/motor_benchmarks/__main__.py` to match your hardware:
+Use CLI flags to match your hardware (no code edits required):
 
-```python
-config = SweepConfig(
-    # Sweep parameters
-    duty_cycle_start=0.2,      # 20% PWM
-    duty_cycle_end=0.9,        # 90% PWM
-    duty_cycle_steps=8,        # 8 measurement points
+```bash
+# Single datapoint
+motor-benchmarks point \
+  --serial-port /dev/cu.usbmodemJLV5port5 \
+  --duty 0.35 \
+  --encoder-channels 1,2 \
+  --pulses-per-revolution 1
 
-    # Serial settings for Jumperless V5
-    serial_port="/dev/ttyACM0",  # Your Jumperless serial port
-    serial_baudrate=115200,
-
-    # Saleae MSO settings
-    encoder_channels=[0],      # Digital channel for encoder
-    threshold_volts=1.65,      # Digital threshold (1.65V for 3.3V logic)
-
-    # Encoder settings
-    pulses_per_revolution=1,   # Encoder pulses per revolution
-    edge_type='rising',        # Count 'rising', 'falling', or 'both' edges
-
-    # Output
-    output_dir=Path("./results"),
-    motor_name="nidec-24h"
-)
+# Sweep
+motor-benchmarks sweep \
+  --serial-port /dev/cu.usbmodemJLV5port5 \
+  --duty-start 0.2 \
+  --duty-end 0.9 \
+  --duty-steps 8 \
+  --encoder-channels 1,2 \
+  --pulses-per-revolution 1
 ```
 
 ### 2. Connect Saleae MSO Device
@@ -60,10 +54,20 @@ Connect your Saleae Logic MSO device via USB. The saleae-mso-api communicates di
 
 ```bash
 # Using uv
-uv run motor-benchmarks
+uv run motor-benchmarks sweep --serial-port /dev/cu.usbmodemJLV5port5
 
 # Or if installed
-motor-benchmarks
+motor-benchmarks sweep --serial-port /dev/cu.usbmodemJLV5port5
+```
+
+### 4. Smoke-Test Submodules (Real Hardware)
+
+```bash
+# Motor driver only
+motor-benchmarks motor-test --serial-port /dev/cu.usbmodemJLV5port5 --duty 0.3 --duration-s 2
+
+# Tachometer only
+motor-benchmarks tach-test --encoder-channels 1,2 --capture-s 2
 ```
 
 ### 4. View Results
@@ -73,7 +77,7 @@ Results are saved in timestamped directories under `./results/`:
 ```
 results/
 └── nidec-24h_20250131_182230/
-    ├── summary.csv              # Aggregate results
+    ├── summary.csv              # Aggregate results (includes motor_voltage_mean)
     ├── metadata.json            # Sweep configuration
     ├── report.txt               # Text summary
     ├── efficiency_curve.png     # RPM vs duty cycle plot
@@ -89,7 +93,7 @@ src/motor_benchmarks/
 ├── __init__.py          # Package initialization
 ├── __main__.py          # CLI entry point
 ├── config.py            # Configuration dataclass
-├── jumperless.py        # Jumperless V5 serial control
+├── bench.py             # Single-point measurement primitives
 ├── saleae_capture.py    # Saleae data acquisition
 ├── analysis.py          # Data analysis and plotting
 └── sweep.py             # Sweep orchestration
@@ -100,7 +104,7 @@ src/motor_benchmarks/
 ### SweepConfig Parameters
 
 - **duty_cycle_start/end**: PWM duty cycle range (0.0 to 1.0)
-- **duty_cycle_steps**: Number of measurement points in the sweep
+- **duty_cycle_steps**: Number of measurement points in the sweep (use 1 for a single datapoint)
 - **acquisition_duration**: Data capture duration at each point (seconds)
 - **settle_time**: Wait time before capture for motor stabilization (seconds)
 - **serial_port**: Jumperless serial port (find with `ls /dev/tty*`)
@@ -109,6 +113,7 @@ src/motor_benchmarks/
 - **threshold_volts**: Digital logic threshold voltage (1.65V for 3.3V, 2.5V for 5V)
 - **pulses_per_revolution**: Number of encoder pulses per motor revolution
 - **edge_type**: Which edges to count: 'rising', 'falling', or 'both'
+- **motor_voltage_channel**: Analog channel for motor voltage (set None to disable)
 - **output_dir**: Results directory
 - **motor_name**: Motor identifier for labeling
 
@@ -116,7 +121,8 @@ src/motor_benchmarks/
 
 1. **Jumperless V5**: Connect via USB, PWM output to motor driver
 2. **Motor & Driver**: Power supply and encoder connections
-3. **Saleae Logic Analyzer**: Connect to encoder outputs (channels 0 & 1)
+3. **Saleae Logic Analyzer**: Connect to encoder outputs (channels 1 & 2; reserve channel 0 for PWM)
+4. **Saleae Analog A0**: Connect to motor voltage (default motor_voltage_channel=0)
 
 ## Customization
 
@@ -132,6 +138,19 @@ config = SweepConfig(
     serial_port="/dev/ttyUSB0"
 )
 
+sweep = MotorSweep(config)
+results_dir = sweep.run()
+```
+
+For a single datapoint, set start=end and steps=1:
+
+```python
+config = SweepConfig(
+    duty_cycle_start=0.35,
+    duty_cycle_end=0.35,
+    duty_cycle_steps=1,
+    serial_port="/dev/ttyUSB0"
+)
 sweep = MotorSweep(config)
 results_dir = sweep.run()
 ```
