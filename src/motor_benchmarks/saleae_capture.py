@@ -527,38 +527,6 @@ class SaleaeCapture:
         print(f"  RPM data saved to: {output_file}")
         return rpm_df
 
-    def get_statistics(self, rpm_df: pd.DataFrame) -> dict:
-        """Calculate statistical metrics for RPM data.
-
-        Args:
-            rpm_df: DataFrame with 'rpm' column
-
-        Returns:
-            Dictionary of statistics
-        """
-        if rpm_df.empty or 'rpm' not in rpm_df.columns:
-            return {
-                'mean': 0.0,
-                'std': 0.0,
-                'min': 0.0,
-                'max': 0.0,
-                'median': 0.0,
-                'cv': 0.0
-            }
-
-        rpm = rpm_df['rpm'].dropna()
-        mean_rpm = rpm.mean()
-        std_rpm = rpm.std()
-
-        return {
-            'mean': float(mean_rpm),
-            'std': float(std_rpm),
-            'min': float(rpm.min()),
-            'max': float(rpm.max()),
-            'median': float(rpm.median()),
-            'cv': float(std_rpm / mean_rpm * 100) if mean_rpm > 0 else 0.0
-        }
-
     def close(self) -> None:
         """Close device connection if supported by the MSO API."""
         if self._mso is None:

@@ -9,10 +9,8 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10.8",
-    "mpremote>=1.27.0",
     "numpy>=2.4.0",
     "pandas>=2.3.3",
-    "plumbum>=1.10.0",
     "pyserial>=3.5",
     "saleae-mso-api>=0.5.4",
 ]
